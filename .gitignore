@@ -1,0 +1,10 @@
+node_modules/
+data/*.sqlite
+data/*.sqlite-journal
+data/*.sqlite-wal
+data/*.sqlite-shm
+data/file-cache/
+.env
+/etc-depdash-local/
+*.log
+.DS_Store

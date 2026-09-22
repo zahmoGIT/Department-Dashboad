@@ -1,0 +1,16 @@
+[Unit]
+Description=DepDash Kiosk Browser
+After=depdash-backend.service
+Requires=depdash-backend.service
+
+[Service]
+Type=simple
+User=depdash
+Environment=DISPLAY=:0
+ExecStartPre=/bin/sleep 5
+ExecStart=/usr/bin/chromium-browser --kiosk --noerrdialogs --disable-translate --no-first-run --fast --fast-start --disable-infobars --disable-features=TranslateUI --disk-cache-dir=/tmp/chromium-cache http://localhost:3000
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=graphical.target

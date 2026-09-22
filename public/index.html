@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Department Dashboard</title>
+  <link rel="stylesheet" href="/css/dashboard.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <h1>DEPARTMENT DASHBOARD</h1>
+    </header>
+
+    <main class="board">
+      <section class="left-panel">
+        <div class="column" id="column-wood-work" data-column-key="wood_work">
+          <h2 class="column-title">WOOD WORK</h2>
+          <div class="column-scroll" id="scroll-wood-work"></div>
+        </div>
+        <div class="column" id="column-assembly-wood-work" data-column-key="assembly_wood_work">
+          <h2 class="column-title">ASSEMBLY<br />WOOD WORK</h2>
+          <div class="column-scroll" id="scroll-assembly-wood-work"></div>
+        </div>
+      </section>
+
+      <section class="right-panel" id="detail-panel">
+        <div class="detail-empty" id="detail-empty">
+          <p>Scan an item, or tap a card, to see job details.</p>
+        </div>
+        <div class="detail-content" id="detail-content" hidden>
+          <div class="detail-header">
+            <div class="detail-header-main">
+              <h2 id="detail-client"></h2>
+              <div class="detail-sub">
+                <span id="detail-quote-ref"></span>
+                <span id="detail-cu-ref" class="cu-ref"></span>
+              </div>
+            </div>
+            <div class="detail-header-status">
+              <span id="detail-status-badge" class="status-badge"></span>
+              <div class="detail-worker" id="detail-worker">Unassigned</div>
+              <div class="detail-timer" id="detail-timer">00:00:00</div>
+            </div>
+          </div>
+
+          <div class="doc-tabs">
+            <button class="doc-tab active" data-tab="job_sheet">Job Sheet</button>
+            <button class="doc-tab" data-tab="cutlist">Cutlist</button>
+            <button class="doc-tab" data-tab="drawing">Drawing</button>
+          </div>
+          <div class="doc-viewer" id="doc-viewer">
+            <iframe id="doc-frame" title="document viewer"></iframe>
+            <div class="doc-missing" id="doc-missing" hidden></div>
+          </div>
+
+          <div class="detail-actions">
+            <button class="btn btn-report" id="btn-report-problem">REPORT PROBLEM</button>
+            <button class="btn btn-done" id="btn-im-done">I'M DONE</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="status-bar">
+      <span id="status-connection">connection: <b id="status-connection-dot">●</b></span>
+      <span id="status-queue" hidden></span>
+      <span id="status-sync">last sync: --:--</span>
+      <span id="status-timers">timers: 0</span>
+    </footer>
+  </div>
+
+  <!-- Overlays: scan prompts, countdown, conflict, problem modal -->
+  <div class="overlay" id="overlay-awaiting-staff" hidden>
+    <div class="overlay-box">
+      <h2>Scan your staff badge</h2>
+      <p id="awaiting-item-name"></p>
+      <div class="overlay-timeout-bar"><div class="overlay-timeout-fill" id="awaiting-timeout-fill"></div></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay-conflict" hidden>
+    <div class="overlay-box">
+      <h2>Item in progress</h2>
+      <p id="conflict-text"></p>
+      <div class="overlay-buttons">
+        <button class="btn btn-secondary" id="conflict-no">No</button>
+        <button class="btn btn-done" id="conflict-yes">Take Over</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay-countdown" hidden>
+    <div class="overlay-box">
+      <h2 id="countdown-title">Moving item...</h2>
+      <div class="countdown-number" id="countdown-number">5</div>
+      <button class="btn btn-cancel" id="countdown-cancel">CANCEL</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay-choice" hidden>
+    <div class="overlay-box">
+      <h2>Where does this item go next?</h2>
+      <div class="overlay-buttons" id="choice-buttons"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay-toast" hidden>
+    <div class="overlay-box overlay-toast-box">
+      <p id="toast-text"></p>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay-problem" hidden>
+    <div class="overlay-box">
+      <h2>Report a Problem</h2>
+      <div class="overlay-buttons problem-buttons">
+        <button class="btn btn-secondary problem-btn" data-category="Missing parts">Missing parts</button>
+        <button class="btn btn-secondary problem-btn" data-category="Wrong dimensions">Wrong dimensions</button>
+        <button class="btn btn-secondary problem-btn" data-category="Material defect">Material defect</button>
+        <button class="btn btn-secondary problem-btn" data-category="Other">Other</button>
+      </div>
+      <textarea id="problem-note" maxlength="500" placeholder="Describe the problem..." hidden></textarea>
+      <div class="overlay-buttons">
+        <button class="btn btn-secondary" id="problem-cancel">Cancel</button>
+        <button class="btn btn-done" id="problem-submit" hidden>Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/scanner.js"></script>
+  <script src="/js/timer.js"></script>
+  <script src="/js/cards.js"></script>
+  <script src="/js/detail.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

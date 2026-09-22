@@ -1,0 +1,16 @@
+[Unit]
+Description=DepDash Backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=depdash
+WorkingDirectory=/opt/depdash
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

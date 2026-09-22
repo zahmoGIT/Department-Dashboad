@@ -1,0 +1,14 @@
+{
+  "shift_start": "07:00",
+  "shift_end": "16:30",
+  "lunch_start": "12:00",
+  "lunch_end": "12:30",
+  "working_days": [1, 2, 3, 4, 5],
+  "saturday": {
+    "shift_start": "07:00",
+    "shift_end": "13:00",
+    "lunch_start": null,
+    "lunch_end": null
+  },
+  "public_holidays": ["2026-12-25", "2027-01-01"]
+}

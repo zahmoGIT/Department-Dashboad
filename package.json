@@ -1,0 +1,22 @@
+{
+  "name": "depdash",
+  "version": "1.0.0",
+  "description": "ZCreations Woodwork Department Dashboard - factory floor kiosk for ClickUp task tracking, Drive document lookup, and QR-scan based time tracking",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "NODE_ENV=development node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "express-basic-auth": "^1.2.1",
+    "googleapis": "^144.0.0",
+    "node-fetch": "^2.7.0"
+  }
+}

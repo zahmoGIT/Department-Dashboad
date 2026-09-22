@@ -1,0 +1,6 @@
+{
+  "mdf": ["wood work", "assembly wood work", "primer", "paint colour", "1st top coat", "2nd top coat", "polishing", "inspection", "item complete"],
+  "veneer": ["wood work", "assembly wood work", "staining", "1st top coat", "2nd top coat", "polishing", "inspection", "item complete"],
+  "upholstery": ["upholstery", "assembly of upholstery", "inspection", "item complete"],
+  "respray": ["primer", "paint colour", "1st top coat", "2nd top coat", "polishing", "inspection", "item complete"]
+}

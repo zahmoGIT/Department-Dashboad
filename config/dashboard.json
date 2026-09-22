@@ -1,0 +1,8 @@
+{
+  "_comment": "Multi-department hook (Section 14.6): which ClickUp statuses populate each column, and which columns this board renders. A spray department board would just point at different statuses/labels.",
+  "columns": [
+    { "key": "wood_work", "label": "WOOD WORK", "statuses": ["wood work"] },
+    { "key": "assembly_wood_work", "label": "ASSEMBLY WOOD WORK", "statuses": ["assembly wood work"] }
+  ],
+  "staff_filter": null
+}

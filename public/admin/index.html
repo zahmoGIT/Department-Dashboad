@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DepDash Admin</title>
+<link rel="stylesheet" href="/css/dashboard.css" />
+<style>
+  body { overflow-y: auto; user-select: text; }
+  .admin-wrap { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  .admin-wrap h1 { font-size: 22px; margin-bottom: 4px; }
+  .admin-wrap h2 { font-size: 16px; margin: 28px 0 8px; color: var(--text-dim); }
+  .cards-row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .stat-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 18px; min-width: 200px;
+  }
+  .stat-card .label { color: var(--text-dim); font-size: 12px; text-transform: uppercase; }
+  .stat-card .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+  .dot.green { background: var(--green); }
+  .dot.red { background: var(--red); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 6px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-dim); font-weight: 600; }
+  .btn-sm { min-height: auto; min-width: auto; font-size: 12px; padding: 6px 12px; border-radius: 4px; }
+  .toolbar { display: flex; gap: 10px; align-items: center; margin: 8px 0; }
+  .empty-note { color: var(--text-dim); font-size: 13px; padding: 8px 0; }
+  .override-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .override-form input { padding: 8px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text); border-radius: 4px; }
+  .level-warning { color: var(--amber); }
+  .level-error { color: var(--red); }
+</style>
+</head>
+<body>
+<div class="admin-wrap">
+  <h1>DepDash Admin</h1>
+  <div class="cards-row" id="overview-cards"></div>
+
+  <h2>Active Timers</h2>
+  <div class="toolbar"><button class="btn btn-secondary btn-sm" id="btn-force-sync">Force Sync All</button></div>
+  <table id="timers-table">
+    <thead><tr><th>Item</th><th>CU Ref</th><th>Staff</th><th>Status</th><th>Started</th><th>Elapsed</th><th></th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Offline Queue</h2>
+  <div class="toolbar">
+    <span id="queue-count"></span>
+    <button class="btn btn-secondary btn-sm" id="btn-retry-queue">Retry Now</button>
+  </div>
+  <table id="queue-table">
+    <thead><tr><th>ID</th><th>Type</th><th>Status</th><th>Attempts</th><th>Created</th><th>Last Error</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Drive Index Health</h2>
+  <div class="cards-row" id="drive-cards"></div>
+  <table id="drive-errors-table">
+    <thead><tr><th>File</th><th>Folder</th><th>Reason</th><th>Detected</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Manual Override: Move Task Status</h2>
+  <div class="override-form">
+    <input id="override-task-id" placeholder="ClickUp task ID" />
+    <input id="override-status" placeholder="new status (e.g. primer)" />
+    <button class="btn btn-secondary btn-sm" id="btn-override-status">Apply</button>
+  </div>
+
+  <h2>Error Log (last 100)</h2>
+  <table id="errors-table">
+    <thead><tr><th>Time</th><th>Level</th><th>Source</th><th>Message</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+
+  function fmtTime(iso) {
+    if (!iso) return 'never';
+    return new Date(iso + 'Z').toLocaleString();
+  }
+  function fmtMs(ms) {
+    const s = Math.floor(ms / 1000);
+    const h = String(Math.floor(s / 3600)).padStart(2, '0');
+    const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+    const sec = String(s % 60).padStart(2, '0');
+    return `${h}:${m}:${sec}`;
+  }
+
+  async function loadOverview() {
+    const [overview, statusRes] = await Promise.all([
+      fetch('/api/admin/overview').then((r) => r.json()),
+      fetch('/api/status').then((r) => r.json()),
+    ]);
+    const clickupOk = overview.clickupOnline;
+    $('overview-cards').innerHTML = `
+      <div class="stat-card">
+        <div class="label">ClickUp API</div>
+        <div class="value"><span class="dot ${clickupOk ? 'green' : 'red'}"></span>${clickupOk ? 'Online' : 'Offline'}</div>
+        <div class="empty-note">last sync: ${fmtTime(overview.clickup && overview.clickup.last_success_at)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Google Drive API</div>
+        <div class="value"><span class="dot ${overview.drive && overview.drive.last_success_at ? 'green' : 'red'}"></span>${overview.drive && overview.drive.last_success_at ? 'Online' : 'Unknown'}</div>
+        <div class="empty-note">last sync: ${fmtTime(overview.drive && overview.drive.last_success_at)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Active Timers</div>
+        <div class="value">${statusRes.activeTimerCount}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Offline Queue</div>
+        <div class="value">${statusRes.offlineQueuePending}</div>
+      </div>
+    `;
+  }
+
+  async function loadTimers() {
+    const timers = await fetch('/api/admin/timers').then((r) => r.json());
+    const tbody = document.querySelector('#timers-table tbody');
+    tbody.innerHTML = timers.length ? '' : '<tr><td colspan="7" class="empty-note">No active timers</td></tr>';
+    timers.forEach((t) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${t.item_id}</td>
+        <td>${t.cu_reference || '-'}</td>
+        <td>${t.staff_name || t.staff_id}</td>
+        <td>${t.status}</td>
+        <td>${fmtTime(t.started_at)}</td>
+        <td>${fmtMs(t.elapsedMs)}</td>
+        <td><button class="btn btn-secondary btn-sm" data-stop="${t.id}">Stop</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll('[data-stop]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        await fetch(`/api/admin/timers/${btn.dataset.stop}/stop`, { method: 'POST' });
+        loadTimers();
+      });
+    });
+  }
+
+  async function loadQueue() {
+    const queue = await fetch('/api/admin/queue').then((r) => r.json());
+    const pending = queue.filter((q) => q.status === 'pending').length;
+    $('queue-count').textContent = `${pending} pending / ${queue.length} total`;
+    const tbody = document.querySelector('#queue-table tbody');
+    tbody.innerHTML = queue.length ? '' : '<tr><td colspan="6" class="empty-note">Queue is empty</td></tr>';
+    queue.forEach((q) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${q.id}</td><td>${q.operation_type}</td><td>${q.status}</td>
+        <td>${q.attempts}</td><td>${fmtTime(q.created_at)}</td><td>${q.last_error || ''}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function loadDriveIndex() {
+    const data = await fetch('/api/admin/drive-index').then((r) => r.json());
+    $('drive-cards').innerHTML = `
+      <div class="stat-card"><div class="label">Total Indexed</div><div class="value">${data.totalIndexed}</div></div>
+      <div class="stat-card"><div class="label">Last Scan</div><div class="value" style="font-size:14px">${fmtTime(data.lastScanAt)}</div></div>
+      <div class="stat-card"><div class="label">Unmatched Files</div><div class="value">${data.errors.length}</div></div>
+    `;
+    const tbody = document.querySelector('#drive-errors-table tbody');
+    tbody.innerHTML = data.errors.length ? '' : '<tr><td colspan="4" class="empty-note">No unmatched files</td></tr>';
+    data.errors.forEach((e) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${e.file_name}</td><td>${e.folder_source || ''}</td><td>${e.reason}</td><td>${fmtTime(e.detected_at)}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function loadErrors() {
+    const errors = await fetch('/api/admin/errors').then((r) => r.json());
+    const tbody = document.querySelector('#errors-table tbody');
+    tbody.innerHTML = errors.length ? '' : '<tr><td colspan="4" class="empty-note">No errors logged</td></tr>';
+    errors.forEach((e) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${fmtTime(e.created_at)}</td><td class="level-${e.level}">${e.level}</td><td>${e.source}</td><td>${e.message}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function refreshAll() {
+    await Promise.all([loadOverview(), loadTimers(), loadQueue(), loadDriveIndex(), loadErrors()]);
+  }
+
+  $('btn-force-sync').addEventListener('click', async () => {
+    $('btn-force-sync').textContent = 'Syncing...';
+    await fetch('/api/admin/force-sync', { method: 'POST' });
+    $('btn-force-sync').textContent = 'Force Sync All';
+    refreshAll();
+  });
+
+  $('btn-retry-queue').addEventListener('click', async () => {
+    await fetch('/api/admin/queue/retry', { method: 'POST' });
+    refreshAll();
+  });
+
+  $('btn-override-status').addEventListener('click', async () => {
+    const taskId = $('override-task-id').value.trim();
+    const status = $('override-status').value.trim();
+    if (!taskId || !status) return;
+    await fetch(`/api/admin/tasks/${encodeURIComponent(taskId)}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    $('override-task-id').value = '';
+    $('override-status').value = '';
+    refreshAll();
+  });
+
+  refreshAll();
+  setInterval(refreshAll, 15000);
+})();
+</script>
+</body>
+</html>
