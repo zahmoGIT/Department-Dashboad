@@ -8,6 +8,8 @@ const { CU_REF_REGEX } = require('../api/drive');
 // ClickUp task cache
 // ---------------------------------------------------------------------------
 
+const QUOTE_REF_REGEX = /QU-\d+/i;
+
 function extractCuReference(task) {
   const field = (task.custom_fields || []).find((f) =>
     (f.name || '').toLowerCase().includes('cu') && (f.name || '').toLowerCase().includes('reference'));
@@ -19,13 +21,34 @@ function extractCuReference(task) {
   return match ? match[0] : null;
 }
 
+// Quote ref (QU-XXXX) is a distinct field from CU reference (00-XXXXX) -
+// both can appear in a client/quote task's name (e.g. "Mohammed wadia
+// QU-5224", whose own custom_id is a CU number like "00-20026"), so this
+// must not reuse extractCuReference's 00-XXXXX pattern.
+function extractQuoteRef(task) {
+  const field = (task.custom_fields || []).find((f) => (f.name || '').toLowerCase().includes('quote'));
+  if (field && field.value) return String(field.value);
+
+  const match = (task.name || '').match(QUOTE_REF_REGEX);
+  return match ? match[0] : null;
+}
+
+// The client/quote root task's name is "<Client name> QU-XXXX" - strip the
+// quote ref back out so the card template (which joins client_name and
+// quote_ref itself) doesn't duplicate it.
+function extractClientName(task) {
+  if (!task || !task.name) return null;
+  const stripped = task.name.replace(QUOTE_REF_REGEX, '').replace(/\s+/g, ' ').trim();
+  return stripped || task.name;
+}
+
 function normalizeTask({ task, parent }) {
   return {
     task_id: task.id,
     parent_task_id: task.parent || null,
     cu_reference: extractCuReference(task),
-    client_name: parent ? parent.name : null,
-    quote_ref: parent ? extractCuReference(parent) : null,
+    client_name: parent ? extractClientName(parent) : null,
+    quote_ref: parent ? extractQuoteRef(parent) : null,
     item_name: task.name,
     status: task.status ? task.status.status : null,
     priority: task.priority ? task.priority.priority : null,

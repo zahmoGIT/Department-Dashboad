@@ -1,17 +1,44 @@
 const config = require('../config');
 
+const MATT_KEYWORDS = ['matt', 'matte', 'satin', 'suede finish', 'soft touch'];
+
 /**
- * Detect item type from subtask name/description keywords (Section 8).
- * Order matters: more specific keywords are checked before falling back
- * to the MDF default.
+ * Gloss vs matt determines whether "polishing" is part of the sequence at
+ * all (matt/satin finishes skip it). Mirrors the WIP-PRODUCTION-CONTROL
+ * skill's own detection rule exactly, including its default: no finish
+ * keyword found -> assume gloss.
+ */
+function detectFinish(text) {
+  return MATT_KEYWORDS.some((k) => text.includes(k)) ? 'matt' : 'gloss';
+}
+
+/**
+ * Detect the routing key (material, plus finish where the material's
+ * sequence depends on it) from subtask name/description keywords.
+ *
+ * This mirrors the production sequences in the ZCreations Full Intelligence
+ * doc's Production Control page (WIP-PRODUCTION-CONTROL skill, ClickUp doc
+ * 2e92p-7572 / page 2e92p-5532, last edited 23 Sep 2026) rather than a
+ * flatter material-only guess - that page is the authoritative, most
+ * recently updated source for these sequences. Order matters: more specific
+ * keywords are checked before falling back to the mdf default.
  */
 function detectItemType(name = '', description = '') {
   const text = `${name} ${description}`.toLowerCase();
+  const finish = detectFinish(text);
 
-  if (text.includes('upholster')) return 'upholstery';
-  if (text.includes('respray') || text.includes('fill/repair') || text.includes('fill / repair')) return 'respray';
-  if (text.includes('stain') || text.includes('veneer') || text.includes('imbua') || text.includes('walnut')) return 'veneer';
-  return 'mdf';
+  const isUpholstery = text.includes('upholster');
+  if (isUpholstery && text.includes('bed')) return 'bed_base_upholstered';
+  if (isUpholstery) return 'upholstery';
+
+  if (text.includes('respray') || text.includes('fill/repair') || text.includes('fill / repair')) {
+    return `respray_${finish}`;
+  }
+  if (text.includes('melamine') || text.includes('board')) return 'melamine';
+  if (text.includes('stain') || text.includes('veneer') || text.includes('imbua') || text.includes('walnut')) {
+    return `veneer_${finish}`;
+  }
+  return `mdf_${finish}`;
 }
 
 /**
@@ -47,12 +74,13 @@ function getNextStatus(currentStatus, itemType) {
 }
 
 /**
- * Ambiguity hook (Section 6.5): "wood work" is a valid current status for
- * both the mdf and veneer sequences, and both agree on "assembly wood work"
- * as next, so in practice detection from keywords resolves it. This helper
+ * Ambiguity hook (Section 6.5): "wood work" is a valid current status
+ * across several sequences that diverge immediately after it (mdf ->
+ * primer, veneer -> staining, melamine -> assembly wood work, bed base ->
+ * upholstery), so keyword detection normally resolves it. This helper
  * exists for the case where keyword detection can't tell (e.g. name gives
- * no hint) - the caller can then prompt "Carpentry or Assembly?" using
- * these choices instead of silently guessing.
+ * no hint) - the caller can then prompt the carpenter to choose using
+ * these candidate next-statuses instead of silently guessing.
  */
 function getAmbiguousChoices(currentStatus) {
   const candidates = new Set();

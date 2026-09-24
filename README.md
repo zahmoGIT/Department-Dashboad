@@ -27,7 +27,7 @@ Admin: `http://localhost:3000/admin` (HTTP Basic Auth - `ADMIN_USERNAME` / `ADMI
 | File | Purpose |
 |---|---|
 | `config/schedule.json` | Shift times, lunch, working days, Saturday hours, public holidays - used to compute production time net of non-working hours |
-| `config/routing.json` | Per item-type status sequences (mdf / veneer / upholstery / respray) |
+| `config/routing.json` | Per item-type status sequences (mdf/veneer split by gloss vs matt finish, melamine, upholstery, bed-base-upholstered, respray split by finish) - see "Reconciled against ZCreations Full Intelligence" below |
 | `config/dashboard.json` | Which ClickUp statuses populate each dashboard column (multi-department hook) |
 
 On the deployed device these are expected at `/etc/depdash/*.json`; override the paths via `DEPDASH_SCHEDULE_CONFIG`, `DEPDASH_ROUTING_CONFIG`, `DEPDASH_DASHBOARD_CONFIG` env vars (see `src/config.js`).
@@ -41,6 +41,23 @@ On the deployed device these are expected at `/etc/depdash/*.json`; override the
 - **Scan state machine** (`src/scanner/input.js`): global two-scan flow (item -> staff) with a 10s timeout, conflict/take-over handling, and multi-item pause/resume for a carpenter working two items at once. The 5-second "I'm done" confirmation countdown pauses the timer server-side so Cancel can resume it exactly where it left off.
 - **Routing** (`src/routing/status.js`): item type is detected from subtask name/description keywords, then the next status is looked up in that type's sequence from `routing.json`. Ambiguous cases return candidate choices for the frontend to prompt.
 - **Drive index** (`src/cache/index.js` + `src/api/drive.js`): background job lists both Drive folders, extracts the `00-XXXXX` CU reference from filenames, and stores metadata in `drive_index`. Files that don't match are logged to `drive_index_errors` and surfaced on `/admin`. Documents are proxied/cached on first request under `data/file-cache/`.
+
+## Reconciled against ZCreations Full Intelligence (24 Sep 2026)
+
+This build started from a standalone brief. The ClickUp doc **ZCreations Full Intelligence** (`2e92p-7572`) has two pages that turned out to be more current: **DEPARTMENT DASHBOARDS** (`2e92p-8772`, edited 21 Sep 2026) and **Production Control** (`2e92p-5532`, part of the WIP-PRODUCTION-CONTROL skill, edited 23 Sep 2026 - the more recent of the two, and the authoritative source for production sequences). Cross-checking the app against both surfaced two real bugs, now fixed:
+
+1. **Production sequences were wrong.** The original brief put `assembly wood work` immediately after `wood work` for MDF/veneer items. Production Control's actual sequences put it near the *end* of the pipeline, after primer/paint/stain/top-coats/polishing - `assembly wood work` is the finishing-fit stage (runners, drawer boxes, hardware), not a continuation of raw carpentry. `config/routing.json` and `src/routing/status.js` now encode the real per-material, per-finish (gloss vs matt - matt skips polishing) sequences, including `melamine` and `bed_base_upholstered` as distinct types, and ClickUp's own status is spelled `asembly of upholstery` (no second "s") - matched verbatim so exact-string lookups don't silently fail.
+2. **Client name / quote ref could resolve to the wrong task.** Items can be split into component sub-subtasks nested several levels under the real client/quote task (confirmed by the doc's Wendy Gajic example and by spot-checking the live WIP list) - the immediate parent is sometimes a mid-level grouping task like "Upstairs TV room", not "Mohammed wadia QU-5224". `src/api/clickup.js` now climbs the parent chain to the true root, and `src/cache/index.js` extracts quote ref (`QU-XXXX`) separately from CU reference (`00-XXXXX`) instead of reusing the same regex for both.
+
+Also fixed: the ZC Designs/-CODED-/Clients Drive folder holds loose native SolidWorks files (`.SLDPRT`/`.SLDASM`) alongside drawings and cutlists - `src/api/drive.js` now indexes them as `cad_source` instead of logging them as unmatched/naming-error files.
+
+**Confirmed unchanged** (doc matches this build): 30/70 layout, two priority-sorted columns, server-side timers, 5s cancel countdown, ambiguous-status choice prompt, problem categories, both Drive folder IDs, admin page requirements, USB QR scanner approach, item QR before staff QR scan order.
+
+**Known gaps flagged by the doc, intentionally not built yet:**
+- Saturday hours in `config/schedule.json` apply shift-wide; the doc notes Saturday is worked by one specific person ("Marvil only"), which would need a per-staff schedule, not just a per-day one.
+- A fourth "build notes / construction methodology" document type is mentioned, but the doc itself says that content doesn't exist as a standard practice yet - no Drive source to index, so no tab was added for it.
+- Fault/return-to-specific-person routing is more fully specified in the doc (routes back to the original stage's worker specifically, with a defined reassign rule) than the original brief's vague hook. `active_timers.fault_reason`/`returned` already anticipate this but the actual routing-to-person logic and UI are still unbuilt, per the doc's own "hidden from carpenter UI on day one" instruction.
+- The doc distinguishes the QR staff badge (per-item attribution only) from ERS Biometrics (separate shift clock-in system) - worth keeping in mind if `staff.clickup_user_id` is ever wired to a real identity source.
 
 ## Flexibility hooks already wired (UI hidden, Section 14 of the spec)
 

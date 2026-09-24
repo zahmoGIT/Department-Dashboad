@@ -1,6 +1,11 @@
 {
-  "mdf": ["wood work", "assembly wood work", "primer", "paint colour", "1st top coat", "2nd top coat", "polishing", "inspection", "item complete"],
-  "veneer": ["wood work", "assembly wood work", "staining", "1st top coat", "2nd top coat", "polishing", "inspection", "item complete"],
-  "upholstery": ["upholstery", "assembly of upholstery", "inspection", "item complete"],
-  "respray": ["primer", "paint colour", "1st top coat", "2nd top coat", "polishing", "inspection", "item complete"]
+  "mdf_gloss": ["wood work", "primer", "paint colour", "1st top coat", "2nd top coat", "polishing", "assembly wood work", "inspection", "item complete"],
+  "mdf_matt": ["wood work", "primer", "paint colour", "1st top coat", "2nd top coat", "assembly wood work", "inspection", "item complete"],
+  "veneer_gloss": ["wood work", "staining", "1st top coat", "2nd top coat", "polishing", "assembly wood work", "inspection", "item complete"],
+  "veneer_matt": ["wood work", "staining", "1st top coat", "2nd top coat", "assembly wood work", "inspection", "item complete"],
+  "melamine": ["wood work", "assembly wood work", "inspection", "item complete"],
+  "upholstery": ["upholstery", "asembly of upholstery", "inspection", "item complete"],
+  "bed_base_upholstered": ["wood work", "upholstery", "asembly of upholstery", "inspection", "item complete"],
+  "respray_gloss": ["primer", "paint colour", "1st top coat", "2nd top coat", "polishing", "inspection", "item complete"],
+  "respray_matt": ["primer", "paint colour", "1st top coat", "2nd top coat", "inspection", "item complete"]
 }

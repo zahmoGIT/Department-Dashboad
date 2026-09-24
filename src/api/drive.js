@@ -23,9 +23,19 @@ function getDriveClient() {
  * Classify a file within the "cutlist/drawing" folder. Drawings are the
  * SolidWorks-exported 2D PDFs; cutlists are spreadsheets (or PDF exports of
  * one). We use filename keywords first, falling back to mime type.
+ *
+ * The folder also holds loose native SolidWorks part/assembly files
+ * (.SLDPRT/.SLDASM, e.g. "BS-Khalid_00-20777.SLDPRT" - confirmed live in
+ * the ZCreations Full Intelligence doc's Drive audit). Those are real,
+ * expected files with valid CU references, not naming mistakes - classify
+ * them as 'cad_source' rather than falling through to "unmatched" so the
+ * admin page's unmatched-file list stays meaningful for genuine typos.
+ * They're indexed but not surfaced in the pilot's doc tabs (3D viewing is
+ * an explicitly deferred nice-to-have, not required for this pilot).
  */
 function classifyCutlistOrDrawing(fileName, mimeType) {
   const lower = fileName.toLowerCase();
+  if (lower.endsWith('.sldprt') || lower.endsWith('.sldasm')) return 'cad_source';
   if (lower.includes('drawing') || lower.includes('dwg')) return 'drawing';
   if (lower.includes('cutlist') || lower.includes('cut list')) return 'cutlist';
   if (mimeType === 'application/vnd.google-apps.spreadsheet' ||

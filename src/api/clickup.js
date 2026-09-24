@@ -29,10 +29,31 @@ async function request(pathname, options = {}) {
 }
 
 /**
+ * Climb a task's parent chain up to the true root ancestor (the task with
+ * no parent at all) - that root is the actual client/quote task. A leaf
+ * item's immediate parent is often a mid-level grouping task instead (e.g.
+ * "Upstairs TV room" sitting between a TV-room component and the client's
+ * "Mohammed wadia QU-5224" task), confirmed both by spot-checking the live
+ * WIP list and by the ZCreations Full Intelligence doc's own Wendy Gajic
+ * split-item example. `nodeCache` memoizes fetched nodes across calls since
+ * many leaf tasks in the same order share the same ancestors.
+ */
+async function resolveRootAncestor(taskId, nodeCache, depth = 0) {
+  let node = nodeCache.get(taskId);
+  if (node === undefined) {
+    node = await getTask(taskId).catch(() => null);
+    nodeCache.set(taskId, node);
+  }
+  if (!node || !node.parent || depth >= 6) return node;
+  return resolveRootAncestor(node.parent, nodeCache, depth + 1);
+}
+
+/**
  * Pull all subtasks from the WIP list currently in one of the woodwork
  * statuses. ClickUp's task list endpoint returns top-level tasks; subtasks
- * are fetched via subtasks=true and parent info is attached separately
- * because the list endpoint doesn't include full parent task fields.
+ * are fetched via subtasks=true and the client/quote task (the root
+ * ancestor, not just the immediate parent - see resolveRootAncestor) is
+ * resolved separately because the list endpoint doesn't include it.
  */
 async function fetchWipTasks(statuses = ['wood work', 'assembly wood work']) {
   const qs = new URLSearchParams();
@@ -43,21 +64,14 @@ async function fetchWipTasks(statuses = ['wood work', 'assembly wood work']) {
   const data = await request(`/list/${config.clickup.wipListId}/task?${qs.toString()}`);
   const tasks = data.tasks || [];
 
-  // Resolve parent task info (client name / quote ref) for subtasks whose
-  // parent isn't included inline.
-  const parentIds = [...new Set(tasks.map((t) => t.parent).filter(Boolean))];
-  const parents = {};
-  await Promise.all(parentIds.map(async (pid) => {
-    try {
-      parents[pid] = await request(`/task/${pid}`);
-    } catch (err) {
-      // Parent lookup failing shouldn't take down the whole poll; the task
-      // just renders without client name and gets logged by the caller.
-      parents[pid] = null;
-    }
+  const nodeCache = new Map();
+  const roots = {};
+  await Promise.all(tasks.map(async (task) => {
+    if (!task.parent || roots[task.parent] !== undefined) return;
+    roots[task.parent] = await resolveRootAncestor(task.parent, nodeCache);
   }));
 
-  return tasks.map((task) => ({ task, parent: task.parent ? parents[task.parent] : null }));
+  return tasks.map((task) => ({ task, parent: task.parent ? roots[task.parent] : null }));
 }
 
 async function getTask(taskId) {
