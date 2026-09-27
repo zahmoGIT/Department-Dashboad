@@ -5,12 +5,14 @@ Requires=depdash-backend.service
 
 [Service]
 Type=simple
-User=depdash
-Environment=DISPLAY=:0
+User=root
+Environment=HOME=/root
 ExecStartPre=/bin/sleep 5
-ExecStart=/usr/bin/chromium-browser --kiosk --noerrdialogs --disable-translate --no-first-run --fast --fast-start --disable-infobars --disable-features=TranslateUI --disk-cache-dir=/tmp/chromium-cache http://localhost:3000
+ExecStart=/usr/bin/startx /opt/depdash/deploy/kiosk-start.sh -- :0 vt1 -nocursor
 Restart=always
 RestartSec=10
+StandardOutput=journal
+StandardError=journal
 
 [Install]
-WantedBy=graphical.target
+WantedBy=multi-user.target

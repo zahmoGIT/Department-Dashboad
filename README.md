@@ -69,15 +69,28 @@ Also fixed: the ZC Designs/-CODED-/Clients Drive folder holds loose native Solid
 
 ## Deployment (Sige1 / Armbian)
 
-1. Copy the repo to `/opt/depdash`, `npm install --production`.
-2. Create `/etc/depdash/clickup.env`, `/etc/depdash/drive-credentials.json`, and copies of the three config JSON files under `/etc/depdash/`.
-3. Install the systemd units:
+The pilot board's minimal Armbian/Debian image has no desktop environment, so
+kiosk mode runs a bare X session (`xinit`/`startx`) rather than assuming a
+display manager is present. Both services run as `root`: this board has no
+other users, and Chromium's sandbox refuses to start as root anyway
+(`--no-sandbox` in `deploy/kiosk-start.sh` is required for that reason) - a
+reasonable tradeoff for a single-purpose closed kiosk, not one to make on a
+shared machine.
+
+1. `apt install -y xserver-xorg xinit x11-xserver-utils` - the minimal X
+   stack the kiosk needs; the Debian `chromium` package (installed earlier)
+   already provides the `chromium` binary the services below expect (not
+   `chromium-browser`, which is Ubuntu's package name).
+2. Copy the repo to `/opt/depdash`, `npm install --production`.
+3. Create `/etc/depdash/clickup.env`, `/etc/depdash/drive-credentials.json`, and copies of the three config JSON files under `/etc/depdash/`.
+4. Install the systemd units:
    ```bash
-   sudo cp deploy/systemd/depdash-backend.service deploy/systemd/depdash-kiosk.service /etc/systemd/system/
-   sudo systemctl daemon-reload
-   sudo systemctl enable --now depdash-backend depdash-kiosk
+   cp deploy/systemd/depdash-backend.service deploy/systemd/depdash-kiosk.service /etc/systemd/system/
+   systemctl daemon-reload
+   systemctl enable --now depdash-backend
+   systemctl enable --now depdash-kiosk
    ```
-4. Confirm `http://localhost:3000` loads in kiosk mode on boot.
+5. Confirm `http://localhost:3000` loads in kiosk mode on boot - check `systemctl status depdash-backend depdash-kiosk` if it doesn't.
 
 ## Credentials needed before go-live
 
